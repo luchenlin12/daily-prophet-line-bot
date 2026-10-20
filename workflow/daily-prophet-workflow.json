@@ -1,0 +1,842 @@
+{
+  "name": "預言家日報小精靈",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "daily-prophet",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        -288,
+        352
+      ],
+      "id": "cbf487a8-ccab-4877-b246-b76a8a918a0b",
+      "name": "Webhook",
+      "webhookId": "00000000-0000-0000-0000-000000000000"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Webhook').item.json.body.events[0].message.text }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "你是《預言家日報》的資深記者，負責把使用者傳來的日常小事寫成巫師世界的報紙新聞。\n\n請輸出以下欄位：\n- section：版別，例如「社會版」、「花邊版」、「體育版」，依事件內容挑選\n- headline：新聞標題，30 字以內，不要加【】\n- article：新聞內文，約 100 到 150 字\n- forecast：今日魔法預報，一到兩句\n- extra：是否為號外，true 或 false\n\n規則：\n1. 使用繁體中文、臺灣用語。\n2. 語氣誇張、八卦、像小報，但不要惡意攻擊任何人。\n3. 把日常事物換成巫師世界的說法，例如捷運→呼嚕粉網路、手機→雙面鏡。\n4. 不要引用原著內文，全部用自己的話寫。\n5. 所有欄位都是純文字，禁止使用 Markdown 符號（**、#、--- 等）。\n6. 如果使用者傳的不是事件（例如只打「嗨」），headline 寫成本報徵求爆料的標題，article 用記者口吻問他今天發生了什麼新鮮事。\n7. 不要使用進度條或特殊方塊符號（例如 █、░）。\n8. extra 只有在事件是人生中少見的大事時才設為 true，例如考上學校、拿到錄取、告白、分手、中獎、搬家、得獎；吃飯、遲到、下雨這類日常小事一律是 false。號外要稀有才有價值。\n9. 以本報記者麗塔·史譏的口吻撰寫，擅長誇大其詞、捕風捉影，喜歡引用「不具名的可靠消息人士」。\n10. 如果使用者傳「隨機爆料」，請自己編一件好笑的日常小事，再把它寫成新聞。"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        832,
+        304
+      ],
+      "id": "e9947974-4dfb-46c8-bed3-36a4839992a2",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-sonnet-4-6",
+          "mode": "list",
+          "cachedResultName": "Claude Sonnet 4.6"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        848,
+        544
+      ],
+      "id": "8ab9d2d5-674a-4d69-84b8-f93b06fed6c4",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/reply",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_LINE_CHANNEL_ACCESS_TOKEN"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  replyToken: $('Webhook').item.json.body.events[0].replyToken,\n  messages: [{\n    type: \"flex\",\n    altText: \"📰 本報記者只看得懂文字，請用文字向預言家日報爆料！\",\n    contents: {\n      type: \"bubble\",\n      header: {\n        type: \"box\", layout: \"vertical\",\n        backgroundColor: \"#2B2118\", paddingAll: \"16px\",\n        contents: [\n          { type: \"text\", text: \"📰 預言家日報\", weight: \"bold\", size: \"lg\", color: \"#F5E6C8\" },\n          { type: \"text\", text: \"編輯部公告\", size: \"xs\", color: \"#C9B68A\", margin: \"sm\" }\n        ]\n      },\n      body: {\n        type: \"box\", layout: \"vertical\",\n        backgroundColor: \"#FBF6EC\", spacing: \"md\",\n        contents: [\n          { type: \"text\", text: \"本報記者看不懂這則爆料！\", weight: \"bold\", size: \"lg\", wrap: true, color: \"#2B2118\" },\n          { type: \"separator\", color: \"#C9B68A\" },\n          { type: \"text\", text: \"本報記者只看得懂文字，貼圖、照片和語音都無法刊登。請用文字告訴我們今天發生了什麼新鮮事，本報將立刻為您登上頭條！\", size: \"sm\", wrap: true, color: \"#4A4036\" }\n        ]\n      },\n      footer: {\n        type: \"box\", layout: \"vertical\",\n        backgroundColor: \"#EFE3C8\", paddingAll: \"12px\",\n        contents: [\n          {\n            type: \"button\", style: \"primary\", color: \"#2B2118\", height: \"sm\",\n            action: { type: \"message\", label: \"試試看範例爆料\", text: \"今天下雨忘記帶傘\" }\n          }\n        ]\n      }\n    }\n  }]\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        608,
+        592
+      ],
+      "id": "a0c7ff25-4570-4a4e-adc5-a9d54fc2f658",
+      "name": "回覆非文字訊息"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"section\": \"社會版\",\n  \"headline\": \"新聞標題\",\n  \"article\": \"新聞內文\",\n  \"forecast\": \"今日魔法預報\",\n  \"extra\": false\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        976,
+        544
+      ],
+      "id": "6ec33f9d-58a7-45ed-815e-7a5fe01ef9b8",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "bda621b5-3ec0-4c0a-aa76-3f729b35296f",
+              "leftValue": "={{ $json.body.events[0].message.type }}",
+              "rightValue": "text",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -64,
+        352
+      ],
+      "id": "0bb7cf73-c119-4cf7-85e9-52a1133e22f4",
+      "name": "是文字?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "29561e44-756f-4c9f-8d15-4e9af9c55e21",
+              "leftValue": "={{ $('Webhook').item.json.body.events[0].type }}",
+              "rightValue": "follow",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        160,
+        544
+      ],
+      "id": "1a805d92-21ce-4cad-96a0-ae4e2de49c5b",
+      "name": "是加好友?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "227d05b4-70e7-44d8-aa3c-5cf1de99fd89",
+              "leftValue": "={{ $('Webhook').item.json.body.events[0].replyToken }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        384,
+        592
+      ],
+      "id": "0e78aec8-3fa7-4506-bfe7-69a4424dd7e4",
+      "name": "有 replyToken?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/reply",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_LINE_CHANNEL_ACCESS_TOKEN"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  replyToken: $('Webhook').item.json.body.events[0].replyToken,\n  messages: [{\n    type: \"flex\",\n    altText: \"📰 感謝訂閱預言家日報！請用文字向本報爆料\",\n    contents: {\n      type: \"bubble\",\n      header: {\n        type: \"box\", layout: \"vertical\",\n        backgroundColor: \"#2B2118\", paddingAll: \"16px\",\n        contents: [\n          { type: \"text\", text: \"📰 預言家日報\", weight: \"bold\", size: \"lg\", color: \"#F5E6C8\" },\n          { type: \"text\", text: \"訂閱確認通知\", size: \"xs\", color: \"#C9B68A\", margin: \"sm\" }\n        ]\n      },\n      body: {\n        type: \"box\", layout: \"vertical\",\n        backgroundColor: \"#FBF6EC\", spacing: \"md\",\n        contents: [\n          { type: \"text\", text: \"感謝訂閱《預言家日報》！\", weight: \"bold\", size: \"lg\", wrap: true, color: \"#2B2118\" },\n          { type: \"separator\", color: \"#C9B68A\" },\n          { type: \"text\", text: \"本報專門刊登讀者生活中的大小事。\", size: \"sm\", wrap: true, color: \"#4A4036\" },\n          { type: \"text\", text:   \"① 用文字傳來今天發生的事\\n② 本報記者立刻寫成頭條新聞\\n③ 人生大事將登上紅色號外！\\n④ 晚上點「晚間出刊」看今日彙整\", size: \"sm\", wrap: true, color: \"#4A4036\" }\n        ]\n      },\n      footer: {\n        type: \"box\", layout: \"vertical\",\n        backgroundColor: \"#EFE3C8\", paddingAll: \"12px\", spacing: \"sm\",\n        contents: [\n          {\n            type: \"button\", style: \"primary\", color: \"#2B2118\", height: \"sm\",\n            action: { type: \"message\", label: \"試試日常爆料\", text: \"今天下雨忘記帶傘\" }\n          },\n          {\n            type: \"button\", style: \"primary\", color: \"#8B1A1A\", height: \"sm\",\n            action: { type: \"message\", label: \"試試號外爆料\", text: \"我考上研究所了！\" }\n          }\n        ]\n      }\n    }\n  }]\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        384,
+        400
+      ],
+      "id": "b249a23b-ecd0-4f29-95c0-8eb0bc586fa5",
+      "name": "回覆歡迎訊息"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "07eeace6-daec-41eb-97a9-0461e1ae6042",
+              "leftValue": "={{ $json.body.events[0].message.text }}",
+              "rightValue": "使用說明",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        160,
+        208
+      ],
+      "id": "8cf1b5f9-23d2-4773-ad2d-4f46afb2ea28",
+      "name": "是使用說明嗎"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/chat/loading/start",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_LINE_CHANNEL_ACCESS_TOKEN"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"chatId\": \"{{ $('Webhook').item.json.body.events[0].source.userId }}\",\n    \"loadingSeconds\": 20\n} ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        608,
+        304
+      ],
+      "id": "3a3e9177-8a4c-4aa8-a33b-97393becfe32",
+      "name": "等待動畫",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/reply",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_LINE_CHANNEL_ACCESS_TOKEN"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  replyToken: $('Webhook').item.json.body.events[0].replyToken,\n  messages: [{\n    type: \"flex\",\n        altText: ($json.output.extra ? \"🚨【號外】\" : \"📰 預言家日報：\") + $json.output.headline,\n    contents: {\n      type: \"bubble\",\n                  header: {\n        type: \"box\", layout: \"vertical\",\n        backgroundColor: $json.output.extra ? \"#8B1A1A\" : \"#2B2118\", paddingAll: \"16px\",\n        contents: [\n          { type: \"text\", text: $json.output.extra ? \"🚨 預言家日報｜號外\" : \"📰 預言家日報\", weight: \"bold\", size: \"lg\", color: \"#F5E6C8\" },\n          { type: \"text\", text: $now.setZone('Asia/Taipei').setLocale('zh-TW').toFormat('yyyy 年 M 月 d 日 cccc') + \"・第 \" + (Math.floor($now.setZone('Asia/Taipei').startOf('day').diff(DateTime.fromISO('2026-10-19', { zone: 'Asia/Taipei' }), 'days').days) + 1) + \" 期\", size: \"xs\", color: $json.output.extra ? \"#F2C4C4\" : \"#C9B68A\", margin: \"sm\" },\n          { type: \"text\", text: $json.output.section, size: \"xs\", color: $json.output.extra ? \"#F2C4C4\" : \"#C9B68A\", margin: \"xs\" }\n        ]\n      },\n            body: {\n        type: \"box\", layout: \"vertical\",\n        backgroundColor: \"#FBF6EC\", spacing: \"md\",\n        contents: [\n          { type: \"text\", text: $json.output.headline, weight: \"bold\", size: \"lg\", wrap: true, color: \"#2B2118\" },\n          { type: \"separator\", color: \"#C9B68A\" },\n          { type: \"text\", text: $json.output.article, size: \"sm\", wrap: true, color: \"#4A4036\" },\n          { type: \"text\", text: \"✒️ 本報記者 麗塔·史譏 報導\", size: \"xxs\", color: \"#8C7B65\", align: \"end\", margin: \"md\" }\n        ]\n      },\n      footer: {\n        type: \"box\", layout: \"vertical\",\n        backgroundColor: \"#EFE3C8\", paddingAll: \"12px\",\n        contents: [\n          { type: \"text\", text: \"🔮 今日魔法預報\", weight: \"bold\", size: \"sm\", color: \"#2B2118\" },\n          { type: \"text\", text: $json.output.forecast, size: \"xs\", wrap: true, color: \"#4A4036\", margin: \"sm\" }\n        ]\n      }\n    }\n  }]\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1184,
+        304
+      ],
+      "id": "01ae6200-d29b-4a8e-8171-346583c01931",
+      "name": "回新聞"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "預言家日報資料庫",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "工作表1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "date": "={{ $now.setZone('Asia/Taipei').toFormat('yyyy-MM-dd') }}",
+            "userId": "={{ $('Webhook').item.json.body.events[0].source.userId }}",
+            "section": "={{ $('AI Agent').item.json.output.section }}",
+            "headline": "={{ $('AI Agent').item.json.output.headline }}",
+            "extra": "={{ $('AI Agent').item.json.output.extra }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "userId",
+              "displayName": "userId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "section",
+              "displayName": "section",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "headline",
+              "displayName": "headline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "extra",
+              "displayName": "extra",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1472,
+        304
+      ],
+      "id": "61cab3f4-283f-4b34-85d4-303a815ebf3f",
+      "name": "存新聞",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "7cc83ebf-2019-4bad-b301-01a21f278c19",
+              "leftValue": "={{ $json.body.events[0].message.text }}",
+              "rightValue": "出刊",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        384,
+        160
+      ],
+      "id": "7e93e4de-3b36-4149-8efe-6cb6fd9b6fd2",
+      "name": "是出刊嗎"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=今日刊出 {{ $json.count }} 則新聞，標題如下：\n{{ $json.list }}",
+        "options": {
+          "systemMessage": "你是《預言家日報》的總編輯。根據讀者今天刊出的所有新聞標題，寫一段約 80 字的「總編輯的話」，像晚報社論一樣總結讀者的這一天，語氣誇張幽默但溫暖。\n\n規則：\n1. 使用繁體中文、臺灣用語。\n2. 只輸出那一段話，純文字，禁止使用 Markdown 符號。\n3. 如果今天沒有新聞，就寫一段催促讀者趕快向本報爆料的話。"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1408,
+        -96
+      ],
+      "id": "a6713d5c-990f-4d40-bf0c-ab9cbb2976c4",
+      "name": "總編輯"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-sonnet-4-6",
+          "mode": "list",
+          "cachedResultName": "Claude Sonnet 4.6"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        1488,
+        144
+      ],
+      "id": "306c56d5-ca75-474a-bd21-33d335b58277",
+      "name": "Anthropic Chat Model1",
+      "credentials": {
+        "anthropicApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/reply",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_LINE_CHANNEL_ACCESS_TOKEN"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  replyToken: $('Webhook').item.json.body.events[0].replyToken,\n  messages: [{\n    type: \"flex\",\n    altText: \"📰 預言家日報晚間版出刊了！\",\n    contents: {\n      type: \"bubble\",\n      header: {\n        type: \"box\", layout: \"vertical\",\n        backgroundColor: \"#2B2118\", paddingAll: \"16px\",\n        contents: [\n          { type: \"text\", text: \"📰 預言家日報｜晚間版\", weight: \"bold\", size: \"lg\", color: \"#F5E6C8\" },\n          { type: \"text\", text: $now.setZone('Asia/Taipei').toFormat('yyyy 年 M 月 d 日') + \" 本日彙整\", size: \"xs\", color: \"#C9B68A\", margin: \"sm\" }\n        ]\n      },\n      body: {\n        type: \"box\", layout: \"vertical\",\n        backgroundColor: \"#FBF6EC\", spacing: \"md\",\n        contents: [\n          { type: \"text\", text: \"今日要聞\", weight: \"bold\", size: \"md\", color: \"#2B2118\" },\n          { type: \"text\", text: $('整理今日新聞').item.json.list, size: \"sm\", wrap: true, color: \"#4A4036\" },\n          { type: \"separator\", color: \"#C9B68A\" },\n          { type: \"text\", text: \"✒️ 總編輯的話\", weight: \"bold\", size: \"md\", color: \"#2B2118\" },\n          { type: \"text\", text: $json.output, size: \"sm\", wrap: true, color: \"#4A4036\" }\n        ]\n      },\n      footer: {\n        type: \"box\", layout: \"vertical\",\n        backgroundColor: \"#EFE3C8\", paddingAll: \"12px\",\n        contents: [\n          { type: \"text\", text: \"本日共刊出 \" + $('整理今日新聞').item.json.count + \" 則新聞，其中號外 \" + $('整理今日新聞').item.json.extraCount + \" 則\", size: \"xs\", color: \"#4A4036\", align: \"center\" }\n        ]\n      }\n    }\n  }]\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1760,
+        16
+      ],
+      "id": "0801bbf7-f8a8-4b4b-8d5a-42347d612659",
+      "name": "回出刊卡片"
+    },
+    {
+      "parameters": {
+        "jsCode": "const userId = $('Webhook').first().json.body.events[0].source.userId;\nconst today = $now.setZone('Asia/Taipei').toFormat('yyyy-MM-dd');\n\n// 只留下「今天、這位使用者」的新聞\nconst rows = $input.all()\n  .map(i => i.json)\n  .filter(r => r.userId === userId && String(r.date).startsWith(today) && r.headline);\n\nconst lines = rows.map(r => (String(r.extra) === 'true' ? '🚨 ' : '📰 ') + r.headline);\n\nreturn [{\n  json: {\n    count: rows.length,\n    extraCount: rows.filter(r => String(r.extra) === 'true').length,\n    list: lines.length ? lines.join('\\n') : '今日本報尚未收到任何爆料。'\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1184,
+        16
+      ],
+      "id": "335336e8-6c60-4309-a633-41d5a3c66ff4",
+      "name": "整理今日新聞"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "預言家日報資料庫",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "工作表1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        896,
+        16
+      ],
+      "id": "12462797-e5f4-45b3-b578-ea70335afb2f",
+      "name": "讀新聞",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/chat/loading/start",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_LINE_CHANNEL_ACCESS_TOKEN"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"chatId\": \"{{ $('Webhook').item.json.body.events[0].source.userId }}\",\n    \"loadingSeconds\": 20\n} ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        608,
+        16
+      ],
+      "id": "1d508447-decf-407e-b073-2b8a466570e2",
+      "name": "等待動畫1",
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "是文字?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "回新聞",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "是文字?": {
+      "main": [
+        [
+          {
+            "node": "是使用說明嗎",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "是加好友?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "回覆非文字訊息": {
+      "main": [
+        []
+      ]
+    },
+    "是加好友?": {
+      "main": [
+        [
+          {
+            "node": "回覆歡迎訊息",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "有 replyToken?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "有 replyToken?": {
+      "main": [
+        [
+          {
+            "node": "回覆非文字訊息",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "是使用說明嗎": {
+      "main": [
+        [
+          {
+            "node": "回覆歡迎訊息",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "是出刊嗎",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "等待動畫": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "回新聞": {
+      "main": [
+        [
+          {
+            "node": "存新聞",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "是出刊嗎": {
+      "main": [
+        [
+          {
+            "node": "等待動畫1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "等待動畫",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "總編輯",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "總編輯": {
+      "main": [
+        [
+          {
+            "node": "回出刊卡片",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "整理今日新聞": {
+      "main": [
+        [
+          {
+            "node": "總編輯",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "讀新聞": {
+      "main": [
+        [
+          {
+            "node": "整理今日新聞",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "等待動畫1": {
+      "main": [
+        [
+          {
+            "node": "讀新聞",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "tags": []
+}
