@@ -4,9 +4,9 @@
 
 在 LINE 傳一句今天發生的事，本報記者麗塔·史譏就會把它寫成一則誇張又八卦的巫師報紙新聞。
 
-本專案使用 **n8n** 串接 **LINE Messaging API** 與 **AI Agent**，為 nuvaClub 神木學堂《我的 AI 小精靈》的實作作品。
+本專案使用 **n8n** 串接 **LINE Messaging API** 與 **AI Agent**。
 
-![圖文選單](assets/richmenu.png)
+
 
 ---
 
@@ -116,6 +116,8 @@ flowchart LR
 | 右上 | `隨機爆料` |
 | 左下 | `出刊` |
 | 右下 | `我考上研究所了！` |
+
+![圖文選單](assets/richmenu.png)
 
 ## 🔮 未來規劃
 
